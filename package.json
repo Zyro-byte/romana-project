@@ -1,0 +1,14 @@
+
+{
+  "name": "figma-fast-redirect",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Fast HTTP redirect server for a Figma presentation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
