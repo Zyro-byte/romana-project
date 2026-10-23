@@ -1,14 +1,14 @@
-
 {
-  "name": "figma-fast-redirect",
-  "version": "1.0.0",
+  "name": "romana-project",
+  "version": "2.0.0",
   "private": true,
-  "description": "Fast HTTP redirect server for a Figma presentation",
+  "description": "Platformă rapidă pentru proiecte școlare — materii și linkuri",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   }
 }
