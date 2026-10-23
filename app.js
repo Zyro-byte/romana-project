@@ -1,374 +1,271 @@
 (() => {
   'use strict';
-
-  const STORAGE_KEY = 'romana_projects_v1';
-  const ADMIN_PASS = '20205';
-  const SESSION_KEY = 'romana_admin_ok';
-
-  /** @typedef {{ id: string, name: string, links: { id: string, name: string, url: string }[] }} Subject */
-
-  /** @returns {{ subjects: Subject[], activeId: string | null }} */
-  function load() {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { subjects: [], activeId: null };
-      const data = JSON.parse(raw);
-      if (!Array.isArray(data.subjects)) return { subjects: [], activeId: null };
-      return {
-        subjects: data.subjects,
-        activeId: data.activeId || (data.subjects[0] && data.subjects[0].id) || null,
-      };
-    } catch {
-      return { subjects: [], activeId: null };
-    }
-  }
-
-  /** @param {{ subjects: Subject[], activeId: string | null }} state */
-  function save(state) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    } catch {}
-  }
-
-  function uid() {
-    return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
-  }
-
-  function isAdmin() {
-    try {
-      return sessionStorage.getItem(SESSION_KEY) === '1';
-    } catch {
-      return false;
-    }
-  }
-
-  function setAdmin(ok) {
-    try {
-      if (ok) sessionStorage.setItem(SESSION_KEY, '1');
-      else sessionStorage.removeItem(SESSION_KEY);
-    } catch {}
-  }
-
-  let state = load();
-  /** @type {null | (() => void)} */
-  let pendingAction = null;
-
+  const TOKEN_KEY = 'romana_tok';
   const $ = (id) => document.getElementById(id);
-
-  const subjectsNav = $('subjectsNav');
-  const linksList = $('linksList');
-  const emptyState = $('emptyState');
-  const subjectTitle = $('subjectTitle');
-  const subjectKicker = $('subjectKicker');
-  const addLinkBtn = $('addLinkBtn');
-  const addSubjectBtn = $('addSubjectBtn');
-  const adminBtn = $('adminBtn');
-
+  let subjects = [];
+  let activeId = null;
+  let afterAuth = null;
+  let linkEdit = null;
+  function token() {
+    try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
+  }
+  function setToken(t) {
+    try {
+      if (t) sessionStorage.setItem(TOKEN_KEY, t);
+      else sessionStorage.removeItem(TOKEN_KEY);
+    } catch {}
+  }
+  function isAdmin() { return !!token(); }
+  async function api(path, opts = {}) {
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+    const t = token();
+    if (t) headers.Authorization = 'Bearer ' + t;
+    const res = await fetch(path, { ...opts, headers });
+    const data = await res.json().catch(() => ({}));
+    if (res.status === 401) { setToken(null); syncAdminUi(); }
+    return { ok: res.ok, status: res.status, data };
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function syncAdminUi() {
+    const btn = $('adminBtn');
+    btn.setAttribute('aria-pressed', isAdmin() ? 'true' : 'false');
+  }
   function render() {
-    const subjects = state.subjects;
-    subjectsNav.innerHTML = '';
-
+    const nav = $('subjectsNav');
+    nav.innerHTML = '';
     if (!subjects.length) {
-      subjectsNav.innerHTML = '<p style="color:var(--dim);font-size:14px;padding:8px 0">Nicio materie încă.</p>';
+      nav.innerHTML = '<p class="empty" style="padding:12px 0;font-size:14px">Nimic încă</p>';
     } else {
       subjects.forEach((s) => {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'staff-link' + (s.id === state.activeId ? ' active' : '');
-        btn.dataset.id = s.id;
-        btn.innerHTML = `<span>${escapeHtml(s.name)} <span class="link-count">${s.links.length}</span></span>`;
+        btn.className = 'nav-item' + (s.id === activeId ? ' active' : '');
+        const label = document.createElement('span');
+        label.innerHTML = escapeHtml(s.name) + ' <span class="count">' + s.links.length + '</span>';
+        btn.appendChild(label);
         if (isAdmin()) {
-          const del = document.createElement('button');
-          del.type = 'button';
-          del.className = 'del-btn';
-          del.textContent = 'Șterge';
-          del.addEventListener('click', (e) => {
+          const x = document.createElement('button');
+          x.type = 'button';
+          x.className = 'x';
+          x.title = 'Șterge';
+          x.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+          x.addEventListener('click', (e) => {
             e.stopPropagation();
-            requireAdmin(() => {
-              if (!confirm(`Ștergi materia „${s.name}”?`)) return;
-              state.subjects = state.subjects.filter((x) => x.id !== s.id);
-              if (state.activeId === s.id) state.activeId = state.subjects[0]?.id || null;
-              save(state);
+            requireAdmin(async () => {
+              if (!confirm('Ștergi „' + s.name + '”?')) return;
+              await api('/api/subjects/' + s.id, { method: 'DELETE' });
+              subjects = subjects.filter((x) => x.id !== s.id);
+              if (activeId === s.id) activeId = subjects[0] ? subjects[0].id : null;
               render();
             });
           });
-          btn.appendChild(del);
+          btn.appendChild(x);
         }
-        btn.addEventListener('click', () => {
-          state.activeId = s.id;
-          save(state);
-          render();
-        });
-        subjectsNav.appendChild(btn);
+        btn.addEventListener('click', () => { activeId = s.id; render(); });
+        nav.appendChild(btn);
       });
     }
-
-    const active = subjects.find((s) => s.id === state.activeId);
-    addLinkBtn.disabled = !active;
-
+    const active = subjects.find((s) => s.id === activeId);
+    $('addLinkBtn').disabled = !active;
+    $('subjectTitle').textContent = active ? active.name : '—';
+    const list = $('linksList');
+    const empty = $('emptyState');
+    list.innerHTML = '';
     if (!active) {
-      subjectKicker.textContent = 'Selectează o materie';
-      subjectTitle.textContent = 'Linkuri';
-      linksList.innerHTML = '';
-      emptyState.classList.remove('hidden');
-      emptyState.querySelector('p').textContent = subjects.length
-        ? 'Alege o materie din stânga.'
-        : 'Alege o materie din stânga sau adaugă una nouă.';
+      empty.classList.remove('hidden');
+      empty.textContent = subjects.length ? 'Alege o materie' : 'Adaugă o materie';
       return;
     }
-
-    emptyState.classList.add('hidden');
-    subjectKicker.textContent = 'Materie';
-    subjectTitle.textContent = active.name;
-    linksList.innerHTML = '';
-
     if (!active.links.length) {
-      emptyState.classList.remove('hidden');
-      emptyState.querySelector('p').textContent = 'Niciun link. Apasă „+ Link” pentru a adăuga.';
+      empty.classList.remove('hidden');
+      empty.textContent = 'Niciun link';
       return;
     }
-
+    empty.classList.add('hidden');
     active.links.forEach((link) => {
       const row = document.createElement('div');
-      row.className = 'link-item';
-      const meta = document.createElement('a');
-      meta.href = link.url;
-      meta.target = '_blank';
-      meta.rel = 'noopener noreferrer';
-      meta.className = 'link-meta';
-      meta.style.flex = '1';
-      meta.style.minWidth = '0';
-      meta.style.textDecoration = 'none';
-      meta.style.color = 'inherit';
-      meta.innerHTML = `<strong>${escapeHtml(link.name)}</strong><span>${escapeHtml(link.url)}</span>`;
-
-      const actions = document.createElement('div');
-      actions.className = 'link-actions';
-
+      row.className = 'link-row';
+      const a = document.createElement('a');
+      a.className = 'main';
+      a.href = link.url;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.innerHTML = '<strong>' + escapeHtml(link.name) + '</strong><span>' + escapeHtml(link.url) + '</span>';
+      const ops = document.createElement('div');
+      ops.className = 'ops';
       if (isAdmin()) {
-        const editBtn = document.createElement('button');
-        editBtn.type = 'button';
-        editBtn.title = 'Editează';
-        editBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
-        editBtn.addEventListener('click', () => {
-          requireAdmin(() => openLinkModal(active.id, link));
-        });
-        const delBtn = document.createElement('button');
-        delBtn.type = 'button';
-        delBtn.className = 'del';
-        delBtn.title = 'Șterge';
-        delBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>';
-        delBtn.addEventListener('click', () => {
-          requireAdmin(() => {
-            if (!confirm(`Ștergi „${link.name}”?`)) return;
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.title = 'Editează';
+        edit.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+        edit.addEventListener('click', () => requireAdmin(() => openLinkModal(active.id, link)));
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'danger';
+        del.title = 'Șterge';
+        del.innerHTML = '<svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>';
+        del.addEventListener('click', () => {
+          requireAdmin(async () => {
+            if (!confirm('Ștergi „' + link.name + '”?')) return;
+            await api('/api/subjects/' + active.id + '/links/' + link.id, { method: 'DELETE' });
             active.links = active.links.filter((l) => l.id !== link.id);
-            save(state);
             render();
           });
         });
-        actions.appendChild(editBtn);
-        actions.appendChild(delBtn);
+        ops.appendChild(edit);
+        ops.appendChild(del);
       }
-
-      const arrow = document.createElement('a');
-      arrow.href = link.url;
-      arrow.target = '_blank';
-      arrow.rel = 'noopener noreferrer';
-      arrow.className = 'arrow';
-      arrow.setAttribute('aria-label', 'Deschide');
-      arrow.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12h13.6"/><path d="m13.6 7.2 4.8 4.8-4.8 4.8"/></svg>';
-
-      row.appendChild(meta);
-      row.appendChild(actions);
-      row.appendChild(arrow);
-      linksList.appendChild(row);
+      const go = document.createElement('a');
+      go.className = 'go';
+      go.href = link.url;
+      go.target = '_blank';
+      go.rel = 'noopener noreferrer';
+      go.setAttribute('aria-label', 'Deschide');
+      go.innerHTML = '<svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>';
+      row.appendChild(a);
+      row.appendChild(ops);
+      row.appendChild(go);
+      list.appendChild(row);
     });
-
-    adminBtn.textContent = isAdmin() ? 'Admin ✓' : 'Admin';
+    syncAdminUi();
   }
-
-  function escapeHtml(str) {
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
   function requireAdmin(fn) {
-    if (isAdmin()) {
-      fn();
-      return;
-    }
-    pendingAction = fn;
-    openPwModal();
+    if (isAdmin()) { fn(); return; }
+    afterAuth = fn;
+    openPw();
   }
-
-  /* Password modal */
   const pwModal = $('pwModal');
   const pwInput = $('pwInput');
   const pwFeedback = $('pwFeedback');
-
-  function openPwModal() {
-    pwFeedback.className = 'feedback-message';
+  function openPw() {
     pwFeedback.textContent = '';
     pwInput.value = '';
     pwModal.classList.remove('hidden');
-    setTimeout(() => pwInput.focus(), 50);
+    setTimeout(() => pwInput.focus(), 40);
   }
-
-  function closePwModal() {
+  function closePw() {
     pwModal.classList.add('hidden');
-    pendingAction = null;
+    afterAuth = null;
   }
-
-  $('pwCancel').addEventListener('click', closePwModal);
+  $('pwCancel').addEventListener('click', closePw);
   $('pwSubmit').addEventListener('click', submitPw);
-  pwInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') submitPw();
-  });
-
-  function submitPw() {
-    if (pwInput.value === ADMIN_PASS) {
-      setAdmin(true);
+  pwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitPw(); });
+  async function submitPw() {
+    const password = pwInput.value;
+    if (!password) { pwInput.focus(); return; }
+    $('pwSubmit').disabled = true;
+    const { ok, data } = await api('/api/auth', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+    $('pwSubmit').disabled = false;
+    if (ok && data.token) {
+      setToken(data.token);
       pwModal.classList.add('hidden');
-      const fn = pendingAction;
-      pendingAction = null;
+      const fn = afterAuth;
+      afterAuth = null;
       render();
       if (fn) fn();
     } else {
-      pwFeedback.className = 'feedback-message error';
-      pwFeedback.textContent = 'Parolă greșită.';
+      pwFeedback.textContent = 'Parolă greșită';
       pwInput.select();
     }
   }
-
-  adminBtn.addEventListener('click', () => {
-    if (isAdmin()) {
-      setAdmin(false);
-      render();
-    } else {
-      requireAdmin(() => render());
-    }
+  $('adminBtn').addEventListener('click', () => {
+    if (isAdmin()) { setToken(null); render(); }
+    else requireAdmin(() => render());
   });
-
-  /* Subject modal */
   const subjectModal = $('subjectModal');
   const subjectName = $('subjectName');
-
-  function openSubjectModal() {
+  function openSubject() {
     subjectName.value = '';
     subjectModal.classList.remove('hidden');
-    setTimeout(() => subjectName.focus(), 50);
+    setTimeout(() => subjectName.focus(), 40);
   }
-
-  function closeSubjectModal() {
-    subjectModal.classList.add('hidden');
-  }
-
-  addSubjectBtn.addEventListener('click', () => {
-    requireAdmin(openSubjectModal);
-  });
-
-  $('subjectCancel').addEventListener('click', closeSubjectModal);
-  $('subjectSave').addEventListener('click', () => {
+  function closeSubject() { subjectModal.classList.add('hidden'); }
+  $('addSubjectBtn').addEventListener('click', () => requireAdmin(openSubject));
+  $('subjectCancel').addEventListener('click', closeSubject);
+  $('subjectSave').addEventListener('click', async () => {
     const name = subjectName.value.trim();
-    if (!name) {
-      subjectName.focus();
-      return;
+    if (!name) return subjectName.focus();
+    const { ok, data } = await api('/api/subjects', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    if (ok) {
+      subjects.push(data);
+      activeId = data.id;
+      closeSubject();
+      render();
     }
-    const sub = { id: uid(), name, links: [] };
-    state.subjects.push(sub);
-    state.activeId = sub.id;
-    save(state);
-    closeSubjectModal();
-    render();
   });
-  subjectName.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') $('subjectSave').click();
-  });
-
-  /* Link modal */
+  subjectName.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('subjectSave').click(); });
   const linkModal = $('linkModal');
   const linkName = $('linkName');
   const linkUrl = $('linkUrl');
-  /** @type {{ subjectId: string, linkId: string | null } | null} */
-  let linkEdit = null;
-
   function openLinkModal(subjectId, existing) {
     linkEdit = { subjectId, linkId: existing ? existing.id : null };
     linkName.value = existing ? existing.name : '';
     linkUrl.value = existing ? existing.url : '';
-    $('linkModalTitle').textContent = existing ? 'Editează link' : 'Link nou';
+    $('linkModalTitle').textContent = existing ? 'Editează' : 'Link';
     linkModal.classList.remove('hidden');
-    setTimeout(() => linkName.focus(), 50);
+    setTimeout(() => linkName.focus(), 40);
   }
-
-  function closeLinkModal() {
+  function closeLink() {
     linkModal.classList.add('hidden');
     linkEdit = null;
   }
-
-  addLinkBtn.addEventListener('click', () => {
-    if (!state.activeId) return;
-    requireAdmin(() => openLinkModal(state.activeId, null));
+  $('addLinkBtn').addEventListener('click', () => {
+    if (!activeId) return;
+    requireAdmin(() => openLinkModal(activeId, null));
   });
-
-  $('linkCancel').addEventListener('click', closeLinkModal);
-  $('linkSave').addEventListener('click', () => {
+  $('linkCancel').addEventListener('click', closeLink);
+  $('linkSave').addEventListener('click', async () => {
     if (!linkEdit) return;
     const name = linkName.value.trim();
-    let url = linkUrl.value.trim();
-    if (!name || !url) {
-      (name ? linkUrl : linkName).focus();
-      return;
-    }
-    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-    const sub = state.subjects.find((s) => s.id === linkEdit.subjectId);
-    if (!sub) return;
+    const url = linkUrl.value.trim();
+    if (!name || !url) return (name ? linkUrl : linkName).focus();
     if (linkEdit.linkId) {
-      const L = sub.links.find((l) => l.id === linkEdit.linkId);
-      if (L) {
-        L.name = name;
-        L.url = url;
+      const { ok, data } = await api('/api/subjects/' + linkEdit.subjectId + '/links/' + linkEdit.linkId, {
+        method: 'PUT',
+        body: JSON.stringify({ name, url }),
+      });
+      if (ok) {
+        const sub = subjects.find((s) => s.id === linkEdit.subjectId);
+        const L = sub && sub.links.find((l) => l.id === linkEdit.linkId);
+        if (L) { L.name = data.name; L.url = data.url; }
+        closeLink();
+        render();
       }
     } else {
-      sub.links.push({ id: uid(), name, url });
+      const { ok, data } = await api('/api/subjects/' + linkEdit.subjectId + '/links', {
+        method: 'POST',
+        body: JSON.stringify({ name, url }),
+      });
+      if (ok) {
+        const sub = subjects.find((s) => s.id === linkEdit.subjectId);
+        if (sub) sub.links.push(data);
+        closeLink();
+        render();
+      }
     }
-    save(state);
-    closeLinkModal();
-    render();
   });
-  linkUrl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') $('linkSave').click();
-  });
-
-  /* Escape closes modals */
+  linkUrl.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('linkSave').click(); });
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
-    if (!pwModal.classList.contains('hidden')) closePwModal();
-    if (!subjectModal.classList.contains('hidden')) closeSubjectModal();
-    if (!linkModal.classList.contains('hidden')) closeLinkModal();
+    if (!pwModal.classList.contains('hidden')) closePw();
+    if (!subjectModal.classList.contains('hidden')) closeSubject();
+    if (!linkModal.classList.contains('hidden')) closeLink();
   });
-
-  /* Seed example if empty */
-  if (!state.subjects.length) {
-    state.subjects = [
-      {
-        id: uid(),
-        name: 'Literatură',
-        links: [
-          {
-            id: uid(),
-            name: 'Copac Octombrie',
-            url: 'https://www.figma.com/deck/CGIl0nptsWe1tYKgLKDl1F',
-          },
-        ],
-      },
-    ];
-    state.activeId = state.subjects[0].id;
-    save(state);
+  async function boot() {
+    const { ok, data } = await api('/api/data');
+    if (ok && Array.isArray(data.subjects)) {
+      subjects = data.subjects;
+      activeId = subjects[0] ? subjects[0].id : null;
+    }
+    render();
   }
-
-  render();
+  boot();
 })();
