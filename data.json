@@ -1,0 +1,15 @@
+{
+  "subjects": [
+    {
+      "id": "seed01",
+      "name": "Literatură",
+      "links": [
+        {
+          "id": "seed02",
+          "name": "Copac Octombrie",
+          "url": "https://www.figma.com/deck/CGIl0nptsWe1tYKgLKDl1F"
+        }
+      ]
+    }
+  ]
+}

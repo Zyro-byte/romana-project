@@ -3,141 +3,93 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Platformă proiecte școlare — materii, linkuri și resurse." />
+  <meta name="description" content="Proiecte școlare — materii și linkuri." />
   <meta name="theme-color" content="#0a0a0a" />
-  <title>Română · Proiecte școlare</title>
-  <link rel="icon" href="/icons/brand-mark.svg" type="image/svg+xml" />
+  <title>Română</title>
+  <link rel="icon" href="/icons/mark.svg" type="image/svg+xml" />
   <script src="/theme.js"></script>
   <link rel="stylesheet" href="/app.css" />
 </head>
 <body>
-  <a href="#app" class="skip-link">Sari la conținut</a>
+  <a href="#main" class="skip-link">Sari la conținut</a>
 
-  <div id="app" tabindex="-1">
-    <!-- TOPBAR -->
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-icon">
-          <img src="/icons/brand-mark.svg" alt="" width="34" height="34" />
-        </div>
-        <div class="brand-text">
-          <div class="brand-title">Română</div>
-          <div class="brand-subtitle">Proiecte școlare</div>
-        </div>
-      </div>
-      <div class="session-actions">
-        <button type="button" class="theme-toggle" data-theme-toggle aria-label="Comută tema" title="Comută tema (D)">
-          <svg viewBox="0 0 24 24" class="theme-sun" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
-          <svg viewBox="0 0 24 24" class="theme-moon" aria-hidden="true"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/></svg>
-        </button>
-        <button type="button" id="adminBtn" class="portal-nav-pill">Admin</button>
-      </div>
-    </header>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+        <rect x="3" y="5" width="26" height="22" rx="4" fill="none" stroke="currentColor" stroke-width="1.75"/>
+        <path d="M9 12h14M9 16.5h10M9 21h7" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"/>
+      </svg>
+      <span class="brand-title">Română</span>
+    </div>
+    <div class="actions">
+      <button type="button" class="icon-btn" data-theme-toggle aria-label="Temă" title="Temă (D)">
+        <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5A8.5 8.5 0 0 1 8.5 4 8.5 8.5 0 1 0 20 15.5Z"/></svg>
+      </button>
+      <button type="button" id="adminBtn" class="pill" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <span>Admin</span>
+      </button>
+    </div>
+  </header>
 
-    <main class="page">
-      <section class="dashboard-hero">
-        <div class="welcome">
-          <div class="welcome-badge">Platformă proiecte</div>
-          <h1>Proiecte școlare</h1>
-          <p>Materii, linkuri și resurse — organizate pe subiecte. Adaugă conținut doar cu parolă.</p>
+  <main id="main" class="page">
+    <div class="layout">
+      <aside class="side">
+        <div class="side-head">
+          <h2>Materii</h2>
+          <button type="button" id="addSubjectBtn" class="icon-btn" title="Materie nouă" aria-label="Materie nouă">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
         </div>
+        <nav id="subjectsNav" class="nav-list" aria-label="Materii"></nav>
+      </aside>
+
+      <section class="content">
+        <div class="content-head">
+          <h1 id="subjectTitle">—</h1>
+          <button type="button" id="addLinkBtn" class="pill solid" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            <span>Link</span>
+          </button>
+        </div>
+        <div id="linksList" class="links"></div>
+        <p id="emptyState" class="empty">Alege o materie</p>
       </section>
+    </div>
+  </main>
 
-      <div class="dashboard-content-grid">
-        <!-- Subjects nav -->
-        <aside class="access-panel">
-          <div class="access-heading">
-            <h2>Materii</h2>
-            <p>Alege o materie</p>
-          </div>
-          <nav class="staff-links" id="subjectsNav" aria-label="Materii"></nav>
-          <button type="button" id="addSubjectBtn" class="portal-nav-pill add-pill">+ Materie</button>
-        </aside>
-
-        <!-- Links panel -->
-        <section class="dashboard-section" id="linksSection">
-          <div class="section-header">
-            <div>
-              <p class="section-kicker" id="subjectKicker">Selectează o materie</p>
-              <h2 class="section-title" id="subjectTitle">Linkuri</h2>
-            </div>
-            <button type="button" id="addLinkBtn" class="save-handbook-btn" disabled>+ Link</button>
-          </div>
-          <div id="linksList" class="links-list"></div>
-          <div id="emptyState" class="empty-state">
-            <p>Alege o materie din stânga sau adaugă una nouă.</p>
-          </div>
-        </section>
-      </div>
-
-      <footer class="footer">
-        <span>Română · Proiecte școlare</span>
-        <span>Date stocate local pe acest dispozitiv</span>
-      </footer>
-    </main>
-  </div>
-
-  <!-- Password modal -->
-  <div id="pwModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
-    <div class="settings-modal">
-      <div class="settings-card">
-        <h3 id="pwTitle">Parolă admin</h3>
-        <p>Introdu parola pentru a adăuga sau edita conținut.</p>
-        <div class="input-group">
-          <label for="pwInput">Parolă</label>
-          <div class="input-wrapper">
-            <input type="password" id="pwInput" autocomplete="current-password" placeholder="••••••••" />
-          </div>
-        </div>
-        <div id="pwFeedback" class="feedback-message" role="status"></div>
-        <div class="modal-actions">
-          <button type="button" id="pwCancel" class="cancel-handbook-btn">Anulează</button>
-          <button type="button" id="pwSubmit" class="save-handbook-btn">Confirmă</button>
-        </div>
+  <div id="pwModal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="pwTitle">
+    <div class="dialog">
+      <h3 id="pwTitle">Parolă</h3>
+      <input type="password" id="pwInput" autocomplete="current-password" placeholder="••••••••" />
+      <p id="pwFeedback" class="hint" role="status"></p>
+      <div class="dialog-row">
+        <button type="button" id="pwCancel" class="pill">Anulează</button>
+        <button type="button" id="pwSubmit" class="pill solid">OK</button>
       </div>
     </div>
   </div>
 
-  <!-- Subject modal -->
-  <div id="subjectModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="subjectModalTitle">
-    <div class="settings-modal">
-      <div class="settings-card">
-        <h3 id="subjectModalTitle">Materie nouă</h3>
-        <div class="input-group">
-          <label for="subjectName">Nume materie</label>
-          <div class="input-wrapper">
-            <input type="text" id="subjectName" maxlength="80" placeholder="ex. Literatura, Gramatică…" autocomplete="off" />
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button type="button" id="subjectCancel" class="cancel-handbook-btn">Anulează</button>
-          <button type="button" id="subjectSave" class="save-handbook-btn">Salvează</button>
-        </div>
+  <div id="subjectModal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="subjectModalTitle">
+    <div class="dialog">
+      <h3 id="subjectModalTitle">Materie</h3>
+      <input type="text" id="subjectName" maxlength="80" placeholder="Nume" autocomplete="off" />
+      <div class="dialog-row">
+        <button type="button" id="subjectCancel" class="pill">Anulează</button>
+        <button type="button" id="subjectSave" class="pill solid">Salvează</button>
       </div>
     </div>
   </div>
 
-  <!-- Link modal -->
-  <div id="linkModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="linkModalTitle">
-    <div class="settings-modal">
-      <div class="settings-card">
-        <h3 id="linkModalTitle">Link nou</h3>
-        <div class="input-group">
-          <label for="linkName">Nume</label>
-          <div class="input-wrapper">
-            <input type="text" id="linkName" maxlength="120" placeholder="ex. Copac Octombrie" autocomplete="off" />
-          </div>
-        </div>
-        <div class="input-group">
-          <label for="linkUrl">URL</label>
-          <div class="input-wrapper">
-            <input type="url" id="linkUrl" maxlength="500" placeholder="https://…" autocomplete="off" />
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button type="button" id="linkCancel" class="cancel-handbook-btn">Anulează</button>
-          <button type="button" id="linkSave" class="save-handbook-btn">Salvează</button>
-        </div>
+  <div id="linkModal" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="linkModalTitle">
+    <div class="dialog">
+      <h3 id="linkModalTitle">Link</h3>
+      <input type="text" id="linkName" maxlength="120" placeholder="Nume — ex. Copac Octombrie" autocomplete="off" />
+      <input type="url" id="linkUrl" maxlength="500" placeholder="https://" autocomplete="off" />
+      <div class="dialog-row">
+        <button type="button" id="linkCancel" class="pill">Anulează</button>
+        <button type="button" id="linkSave" class="pill solid">Salvează</button>
       </div>
     </div>
   </div>
