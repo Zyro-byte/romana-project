@@ -1,9 +1,15 @@
 # Română
 
-Materii + linkuri. Figtree, UI minimal, parolă pe server.
+Materii + linkuri. Figtree, UI minimal.
+
+## Deploy (Vercel)
+
+Static + `/api/auth` (parolă pe server). Adaugă `project.devs.surf` în Vercel → Settings → Domains.
+
+Parolă: env `ADMIN_PASS` (default `20205`).
+
+## Local
 
 ```bash
-npm start
+npx serve .
 ```
-
-Parolă: `ADMIN_PASS` (default `20205`) — doar pe server, nu în client.

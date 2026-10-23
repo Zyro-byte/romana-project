@@ -1,11 +1,10 @@
 {
   "name": "romana-project",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "private": true,
   "description": "Proiecte școlare — materii și linkuri",
-  "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "npx serve -l 3000 ."
   },
   "engines": {
     "node": ">=18"
